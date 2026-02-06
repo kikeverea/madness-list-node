@@ -1,7 +1,10 @@
+const PORT = 3000
+
 const express = require('express')
+const morgan = require('morgan')
+
 const app = express()
 
-const PORT = 3000
 
 let lists = [
   {
@@ -30,6 +33,21 @@ let todos = [
     "listId":  1
   },
 ]
+
+const requestLogger = (request, response, next) => {
+  console.log(`[${request.method}]`, request.path)
+  if (request.body)
+    console.log('Body:', request.body)
+
+  next()
+}
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(express.json())
+app.use(morgan('tiny'))
 
 app.get('/api/lists', (request, response) => {
   response.json(lists)
@@ -96,5 +114,7 @@ app.delete('/api/todos/:id', (request, response) => {
 
   response.status(204).end()
 })
+
+app.use(unknownEndpoint)
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
