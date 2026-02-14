@@ -1,20 +1,8 @@
-const PORT = 3000
+require('dotenv').config()
+const PORT = process.env.PORT
 
-const express = require('express')
-const morgan = require('morgan')
-const { unknownEndpoint } = require('./app/util/middleware');
+const db = require('./src/db/sequelize')
+db.connect()
 
-const todosRouter = require('./app/routers/todos')
-const listsRouter = require('./app/routers/lists')
-
-const app = express()
-
-app.use(express.json())
-app.use(morgan('tiny'))
-
-// Routes
-app.use(todosRouter)
-app.use(listsRouter)
-app.use(unknownEndpoint)
-
+const app = require('./src/app')
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
