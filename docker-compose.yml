@@ -1,0 +1,10 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb   # set shared memory limit
+    environment:
+      POSTGRES_DB: madness-list-node
+      POSTGRES_PASSWORD: example
+    volumes:
+      - ./postgres_data:/var/lib/postgresql
