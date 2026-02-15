@@ -1,4 +1,9 @@
-const { Sequelize } = require('sequelize')
+import { Sequelize } from 'sequelize'
+
+const db = process.env.DATABASE_URL
+
+if (!db)
+  throw new Error('No sequelize database url')
 
 const ssl = process.env.DATABASE_SSL === 'true'
   ? {
@@ -9,21 +14,20 @@ const ssl = process.env.DATABASE_SSL === 'true'
     }
   : {}
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialectOptions: {
-    ...ssl
-  },
+export const sequelize = new Sequelize(db, {
+  dialectOptions: { ...ssl },
 })
 
 const connect = async () => {
   try {
     await sequelize.authenticate()
+    await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' })
+
     console.log('Connection has been established successfully.')
-    return sequelize.close()
   }
   catch (error) {
     console.error('Unable to connect to the database:', error)
   }
 }
 
-module.exports = { connect, sequelize }
+export default { connect }

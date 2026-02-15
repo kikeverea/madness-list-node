@@ -1,6 +1,8 @@
-const router = require('express').Router()
-const todosController = require('./todo.controller')
-const { setTodo } = require('./todo.middleware')
+import { Router } from 'express'
+import todosController from './todo.controller'
+import { setTodo } from './todo.middleware'
+
+const router = Router()
 
 router.param('id', setTodo)
 
@@ -10,4 +12,4 @@ router.post('/', todosController.create)
 router.put('/:id', todosController.update)
 router.delete('/:id', todosController.destroy)
 
-module.exports = router
+export default router

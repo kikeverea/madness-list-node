@@ -1,6 +1,8 @@
-const router = require('express').Router()
-const listController = require('./list.controller')
-const { setList } = require('./list.middleware')
+import { Router } from 'express'
+import listController from './list.controller'
+import { setList } from './list.middleware'
+
+const router = Router()
 
 router.param('id', setList)
 
@@ -10,4 +12,4 @@ router.post('/', listController.create)
 router.put('/:id', listController.update)
 router.delete('/:id', listController.destroy)
 
-module.exports = router
+export default router
