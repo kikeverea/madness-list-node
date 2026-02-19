@@ -1,4 +1,4 @@
-import { Todo } from '../../models/todo'
+import { Todo } from '../../models'
 import { Request, Response, NextFunction } from 'express'
 
 export const setTodo = async (req: Request, res: Response, next: NextFunction, id: number) => {

@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 
-import { List } from '../../models/list'
+import { List } from '../../models'
 
 const findAll: RequestHandler = async (_req, res, next) => {
   try {
@@ -28,7 +28,7 @@ const create: RequestHandler = async (req, res, next) => {
 const update: RequestHandler = async (req, res, next) => {
   try {
     const list = await req.list!.update(req.body)
-    res.status(201).json(list)
+    res.status(200).json(list)
   }
   catch (err) { next(err) }
 }
@@ -36,7 +36,7 @@ const update: RequestHandler = async (req, res, next) => {
 const destroy: RequestHandler = async (req, res, next) => {
   try {
     await req.list!.destroy()
-    res.status(204)
+    res.status(204).end()
   }
   catch (err) { next(err) }
 }

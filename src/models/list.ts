@@ -13,8 +13,8 @@ export class List extends Model<InferAttributes<List>, InferCreationAttributes<L
     List.hasMany(models.Todo)
   }
 
-  declare id: CreationOptional<string>
-  declare title: CreationOptional<string>
+  declare id: CreationOptional<number>
+  declare name: CreationOptional<string>
 }
 
 export default (sequelize: Sequelize) => {
@@ -24,7 +24,7 @@ export default (sequelize: Sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    title: {
+    name: {
       type: DataTypes.STRING,
     },
   },
@@ -32,7 +32,7 @@ export default (sequelize: Sequelize) => {
     sequelize,
     underscored: true,
     timestamps: false,
-    modelName: 'todo'
+    modelName: 'list',
   })
 
   return List
