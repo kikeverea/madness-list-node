@@ -1,0 +1,10 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb   # set shared memory limit
+    environment:
+      POSTGRES_DB: madness-list-node-test
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5433:5432"

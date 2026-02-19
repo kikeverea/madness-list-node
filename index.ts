@@ -1,4 +1,5 @@
-import 'dotenv/config'
+import './src/config/dotenv.config' // loads .env files
+
 import app from './src/app'
 import db from './src/db/sequelize'
 
