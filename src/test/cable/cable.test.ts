@@ -1,41 +1,62 @@
 import '../../config/dotenv.config'
 import app from '../../app'
+import supertest from 'supertest'
+import db from '../../db/database'
 
-let server: ReturnType<typeof app.listen>
+const server = app.listen(4000)
+const api = supertest(app)
+let socket: WebSocket
 
-beforeAll(() => {
-  server = app.listen(3000, () => {})
-})
-
+beforeAll(async () => await db.connect())
+afterEach(() => socket?.close())
 afterAll(() => server?.close())
 
-test('echoes', async () => {
-  const socket = new WebSocket('ws://localhost:3000/cable/echo')
-  const data: string[] = []
-  const messages = 50
+const openSocket = (endpoint: string): WebSocket => {
+  socket = new WebSocket(`ws://localhost:4000/cable/${endpoint}`)
+  return socket
+}
 
-  let communicationOver: (value: unknown) => void
-  const waitForCommunication = new Promise((resolve) => communicationOver = resolve)
+type SocketEvent = Event | MessageEvent | ErrorEvent
+function awaitFor(socket: WebSocket, eventName: 'message'): Promise<MessageEvent>;
+function awaitFor(socket: WebSocket, eventName: 'open'): Promise<Event>;
+function awaitFor(socket: WebSocket, eventName: 'open'|'message'|'error'): Promise<SocketEvent> {
+  let resolveEvent: (value: SocketEvent) => void
 
-  socket.addEventListener('open', () => {
+  socket.addEventListener(eventName, event => resolveEvent(event))
+
+  if (eventName === 'open')
     socket.addEventListener('error', error => console.error('WebSocket error:', error))
 
-    for (let i = 0; i < messages; i++)
-      socket.send(`Hello Server ${i}!`)
-  })
+  return new Promise((resolve) => resolveEvent = resolve)
+}
 
+test('echoes', async () => {
+  const socket = openSocket('echo')
+  const data: string[] = []
+  const messageCount = 50
 
-  socket.addEventListener('message', event => {
+  await awaitFor(socket, 'open')
+
+  for (let i = 0; i < messageCount; i++) {
+    socket.send(`Hello Server ${i}!`)
+
+    const event = await awaitFor(socket, 'message')
     data.push(event.data)
+  }
 
-    if (data.length === messages)
-      communicationOver(true)
-  })
-
-  await waitForCommunication
-
-  const expected = [...Array(messages)].map((_k, i) => `Hello Server ${i}!`)
+  const expected = [...Array(messageCount)].map((_k, i) => `Hello Server ${i}!`)
   expect(data.sort()).toEqual(expected.sort())
+})
 
-  socket.close()
+test('plugs to logs', async () => {
+  const socket = openSocket('http_logs')
+
+  await awaitFor(socket, 'open')
+  await api.get('/api/lists').expect(200)
+
+  const event = await awaitFor(socket, 'message')
+  const message = await event.data.text()
+
+  expect(message).toBeDefined()
+  expect(message).toContain('200')
 })

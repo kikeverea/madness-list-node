@@ -7,7 +7,8 @@ declare global {
     interface Request {
       list?: List
       todo?: Todo
-      decodedToken?: string | JwtPayload
+      decodedToken?: string | JwtPayload,
+      user?: { id: string, name: string },
     }
   }
 }
