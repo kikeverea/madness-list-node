@@ -7,7 +7,7 @@ const getDatabaseName = (): string => {
   return `test_db_worker_${workerId}`
 }
 
-const swapDatabaseNames = (adminUrl: string, newName: string): URL => {
+const newDatabaseURL = (adminUrl: string, newName: string): URL => {
   const newUrl = new URL(adminUrl)
   newUrl.pathname = `/${newName}`
 
@@ -39,7 +39,7 @@ export const getDatabaseForWorker = async (): Promise<Sequelize> => {
   const databaseName = getDatabaseName()
   await createDatabase(adminDBUrl, databaseName)
 
-  const workerUrl = swapDatabaseNames(adminDBUrl, databaseName)
+  const workerUrl = newDatabaseURL(adminDBUrl, databaseName)
   sequelize = new Sequelize(workerUrl.toString(), { logging: false })
 
   return sequelize

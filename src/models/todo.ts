@@ -36,7 +36,7 @@ export default (sequelize: Sequelize) => {
       timestamps: false,
       modelName: 'todo'
     }
-  );
+  )
 
   return Todo
 }

@@ -1,41 +1,81 @@
 import '../../config/dotenv.config'
 import app from '../../app'
+import { login, UserSession } from '../helpers'
+import request from 'supertest'
 
-let server: ReturnType<typeof app.listen>
+const api = request.agent(app)
+const server = app.listen(4000)
+let socket: WebSocket
+let userSession: UserSession
 
-beforeAll(() => {
-  server = app.listen(3000, () => {})
+beforeEach(async () => userSession = await login(api))
+afterEach(async () => {
+  socket?.close()
+  await userSession.logout()
 })
-
 afterAll(() => server?.close())
 
-test('echoes', async () => {
-  const socket = new WebSocket('ws://localhost:3000/cable/echo')
-  const data: string[] = []
-  const messages = 50
+const openSocket = (endpoint: string): WebSocket => {
+  socket = new WebSocket(
+    `ws://localhost:4000/cable/${endpoint}`,
+    { headers: { Authorization: `Bearer ${userSession.token}` }}
+  )
 
-  let communicationOver: (value: unknown) => void
-  const waitForCommunication = new Promise((resolve) => communicationOver = resolve)
+  return socket
+}
+
+type ServerMessage = { type: 'ready' | 'message', content?: string }
+type ServerMessagePredicate = (message: ServerMessage) => boolean
+
+const listenForMessages = (socket: WebSocket) => {
+  let passCriteria: ((message: ServerMessage) => boolean) | null = null
+  let promiseResolve: (value: ServerMessage) => void
 
   socket.addEventListener('open', () => {
-    socket.addEventListener('error', error => console.error('WebSocket error:', error))
-
-    for (let i = 0; i < messages; i++)
-      socket.send(`Hello Server ${i}!`)
+    socket.addEventListener('message', event => {
+      const message: ServerMessage = JSON.parse(event.data)
+      passCriteria?.(message) && promiseResolve(message)
+    })
   })
 
+  return (messagePredicate: ServerMessagePredicate = () => true): Promise<ServerMessage> => {
+    passCriteria = messagePredicate
+    return new Promise((resolve) => promiseResolve = resolve)
+  }
+}
 
-  socket.addEventListener('message', event => {
-    data.push(event.data)
+test('echoes', async () => {
+  const messageCount = 50
+  const socket = openSocket('echo')
+  const data: string[] = []
 
-    if (data.length === messages)
-      communicationOver(true)
-  })
+  const awaitForMessage = listenForMessages(socket)
+  await awaitForMessage(message => message.type === 'ready')
 
-  await waitForCommunication
+  for (let i = 0; i < messageCount; i++) {
+    const payload = `Hello Server ${i}!`
+    socket.send(payload)
 
-  const expected = [...Array(messages)].map((_k, i) => `Hello Server ${i}!`)
+    const message = await awaitForMessage(message => message.content === payload)
+    data.push(message.content || '')
+  }
+
+  const expected = [...Array(messageCount)].map((_k, i) => `Hello Server ${i}!`)
+
   expect(data.sort()).toEqual(expected.sort())
+})
 
-  socket.close()
+test('plugs to logs', async () => {
+  const socket = openSocket('echo')
+  const awaitForMessage = listenForMessages(socket)
+  await awaitForMessage(message => message.type === 'ready')
+
+  await api.get('/api/lists').expect(200)
+
+  const message = await awaitForMessage()
+
+  console.log('MESSAGE', message)
+
+  expect(message).toBeDefined()
+  expect(message).toContain('200')
 })

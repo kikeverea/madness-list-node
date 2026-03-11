@@ -1,13 +1,15 @@
-import type { Todo } from '../models/todo'
-import type { List } from '../models/list'
-import { JwtPayload } from 'jsonwebtoken'
+import type { Todo } from '../models'
+import type { List } from '../models'
+import { User } from '../models'
 
 declare global {
   namespace Express {
     interface Request {
       list?: List
       todo?: Todo
-      decodedToken?: string | JwtPayload
+      user?: User
+      currentUser?: User
+      token?: string
     }
   }
 }

@@ -1,27 +1,20 @@
-import '../../config/dotenv.config'
-import supertest from 'supertest'
 import app from '../../app'
-import db from '../../db/database'
-import { truncateAll } from '../setup'
-import { createList, assertCountDiff } from '../helpers'
+import { createList, assertCountDiff, rand, expectJson, UserSession, login } from '../helpers'
 import { List } from '../../models'
+import request from 'supertest'
 
-const api = supertest(app)
+const api = request.agent(app)
 
-beforeAll(async () => db.connect())
+let userSession: UserSession
 
-beforeEach(async () => {
-  await truncateAll()
-})
+beforeEach(async () => userSession = await login(api))
+afterEach(async () => userSession.logout())
 
 describe('lists', () => {
-  test('lists are returned', async () => {
+  test('fetches all lists', async () => {
     const lists = await Promise.all([...Array(5)].map((_, i: number) => createList({ name: `List ${i}` })))
 
-    const res = await api
-      .get('/api/lists')
-      .expect(200)
-      .expect('Content-Type', /application\/json/)
+    const res = await expectJson(api.get('/api/lists'), 200)
 
     const returned = res.body
 
@@ -31,15 +24,23 @@ describe('lists', () => {
       .forEach((list: List, i: number) => expect(list.name).toBe(`List ${i}`))
   })
 
+  test('fetches a list', async () => {
+    const lists = await Promise.all([...Array(5)].map((_, i: number) => createList({ name: `List ${i}` })))
+    const index = rand(lists.length)
+    const list = lists[index]
+
+    const res = await expectJson(api.get(`/api/lists/${list.id}`), 200)
+
+    const fetchedList = res.body
+
+    expect(fetchedList.name).toBe(`List ${index}`)
+  })
+
   test('creates a list', async () => {
     await assertCountDiff(List, 1, async () => {
       const list = { name: 'Test list' }
 
-      const res = await api
-        .post('/api/lists')
-        .send(list)
-        .expect(201)
-        .expect('Content-Type', /application\/json/)
+      const res = await expectJson(api.post('/api/lists').send(list), 201)
 
       const received = res.body
       const created = await List.findByPk(received.id, { raw: true }) || {}
@@ -54,11 +55,7 @@ describe('lists', () => {
     const list = { ...created.toJSON(), name: 'Updated list' }
 
     await assertCountDiff(List, 0, async () => {
-      const res = await api
-        .put(`/api/lists/${list.id}`)
-        .send(list)
-        .expect(200)
-        .expect('Content-Type', /application\/json/)
+      const res = await expectJson(api.put(`/api/lists/${list.id}`).send(list), 200)
 
       const received = res.body
       const updated = await List.findByPk(list.id, { raw: true }) || {}
