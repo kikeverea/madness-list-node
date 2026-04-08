@@ -1,41 +1,58 @@
 import '../../config/dotenv.config'
 import app from '../../app'
+import { login, UserSession } from '../helpers'
+import request from 'supertest'
+import { listenForMessages, openSocket } from '../socketHelpers'
 
-let server: ReturnType<typeof app.listen>
+const api = request.agent(app)
+const server = app.listen(4000)
+let socket: WebSocket
+let userSession: UserSession
 
-beforeAll(() => {
-  server = app.listen(3000, () => {})
+beforeEach(async () => {
+  userSession = await login(api)
 })
-
+afterEach(async () => {
+  socket?.close()
+  await userSession.logout()
+})
 afterAll(() => server?.close())
 
-test('echoes', async () => {
-  const socket = new WebSocket('ws://localhost:3000/cable/echo')
-  const data: string[] = []
-  const messages = 50
 
-  let communicationOver: (value: unknown) => void
-  const waitForCommunication = new Promise((resolve) => communicationOver = resolve)
+describe('cable', () => {
+  test('echoes', async () => {
+    socket = openSocket('echo', userSession)
 
-  socket.addEventListener('open', () => {
-    socket.addEventListener('error', error => console.error('WebSocket error:', error))
+    const messageCount = 50
+    const data: string[] = []
 
-    for (let i = 0; i < messages; i++)
-      socket.send(`Hello Server ${i}!`)
+    const awaitForMessage = listenForMessages(socket)
+    await awaitForMessage(message => message.type === 'ready')
+
+    for (let i = 0; i < messageCount; i++) {
+      const payload = `Hello Server ${i}!`
+      socket.send(payload)
+
+      const message = await awaitForMessage(message => message.content === payload)
+      data.push(message.content || '')
+    }
+
+    const expected = [...Array(messageCount)].map((_k, i) => `Hello Server ${i}!`)
+
+    expect(data.sort()).toEqual(expected.sort())
   })
 
+  test('plugs to logs', async () => {
+    socket = openSocket('http_logs', userSession)
 
-  socket.addEventListener('message', event => {
-    data.push(event.data)
+    const awaitForMessage = listenForMessages(socket)
+    await awaitForMessage(message => message.type === 'ready')
 
-    if (data.length === messages)
-      communicationOver(true)
+    api.get('/api/lists').end()
+
+    const message = await awaitForMessage()
+
+    expect(message).toBeDefined()
+    expect(message).toContain('200')
   })
-
-  await waitForCommunication
-
-  const expected = [...Array(messages)].map((_k, i) => `Hello Server ${i}!`)
-  expect(data.sort()).toEqual(expected.sort())
-
-  socket.close()
 })
