@@ -5,7 +5,7 @@ type ServerMessagePredicate = (message: ServerMessage) => boolean
 
 export const openSocket = (endpoint: string, userSession: UserSession): WebSocket => {
   return new WebSocket(
-    `ws://localhost:4000/cable/${endpoint}`,
+    `ws://localhost:${process.env.PORT}/cable/${endpoint}`,
     { headers: { Authorization: `Bearer ${userSession.token}` }}
   )
 }

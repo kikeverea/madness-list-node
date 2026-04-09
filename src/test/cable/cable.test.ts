@@ -5,7 +5,7 @@ import request from 'supertest'
 import { listenForMessages, openSocket } from '../socketHelpers'
 
 const api = request.agent(app)
-const server = app.listen(4000)
+const server = app.listen(process.env.PORT)
 let socket: WebSocket
 let userSession: UserSession
 
